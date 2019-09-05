@@ -21,7 +21,7 @@ use std::fmt;
 
 use rstd::prelude::*;
 use runtime_io::blake2_256;
-use crate::codec::{Decode, Encode, Input, Error};
+use crate::codec::{Decode, Encode, EncodeLike, Input, Error};
 use crate::traits::{self, Member, MaybeDisplay, SignedExtension, Checkable, Extrinsic};
 use super::CheckedExtrinsic;
 
@@ -183,6 +183,12 @@ impl<Call, Extra> Encode for SignedPayload<Call, Extra> where
 	}
 }
 
+impl<Call, Extra> EncodeLike for SignedPayload<Call, Extra>
+where
+	Call: Encode,
+	Extra: SignedExtension,
+{}
+
 impl<Address, Call, Signature, Extra> Decode
 	for UncheckedExtrinsic<Address, Call, Signature, Extra>
 where
@@ -237,6 +243,15 @@ where
 		})
 	}
 }
+
+impl<Address, Call, Signature, Extra> EncodeLike
+	for UncheckedExtrinsic<Address, Call, Signature, Extra>
+where
+	Address: Encode,
+	Signature: Encode,
+	Call: Encode,
+	Extra: SignedExtension,
+{}
 
 #[cfg(feature = "std")]
 impl<Address: Encode, Signature: Encode, Call: Encode, Extra: SignedExtension> serde::Serialize

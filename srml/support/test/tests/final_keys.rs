@@ -17,11 +17,11 @@
 use runtime_io::{with_externalities, Blake2Hasher};
 use support::{StorageValue, StorageMap, StorageLinkedMap, StorageDoubleMap};
 use support::storage::unhashed;
-use codec::{Encode, Decode};
+use codec::{Encode, Decode, EncodeLike};
 
 pub trait Trait {
 	type Origin;
-	type BlockNumber: Encode + Decode + Default + Clone;
+	type BlockNumber: Encode + Decode + EncodeLike + Default + Clone;
 }
 
 support::decl_module! {

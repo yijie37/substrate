@@ -279,7 +279,7 @@ macro_rules! for_each_tuple {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use codec::Codec;
+	use codec::{Codec, EncodeLike};
 	use runtime_io::{with_externalities, Blake2Hasher};
 	pub use srml_metadata::{
 		DecodeDifferent, StorageEntryMetadata, StorageMetadata, StorageEntryType,
@@ -288,7 +288,7 @@ mod tests {
 	pub use rstd::marker::PhantomData;
 
 	pub trait Trait {
-		type BlockNumber: Codec + Default;
+		type BlockNumber: Codec + EncodeLike + Default;
 		type Origin;
 	}
 
