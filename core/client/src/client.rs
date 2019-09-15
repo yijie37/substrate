@@ -1315,7 +1315,7 @@ impl<B, E, Block, RA> Client<B, E, Block, RA> where
 	}
 
 	/// Get block light header by id.
-	fn light_header(&self, id: &BlockId<Block>) -> error::Result<Option<LightHeader<Block>>> {
+	pub fn light_header(&self, id: &BlockId<Block>) -> error::Result<Option<LightHeader<Block>>> {
 		self.backend.blockchain().light_header(*id)
 	}
 
