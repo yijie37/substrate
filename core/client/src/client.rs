@@ -63,7 +63,7 @@ use crate::{
 		StorageCollection, ChildStorageCollection
 	},
 	blockchain::{
-		self, Info as ChainInfo, Backend as ChainBackend,
+		self, Info as ChainInfo, Backend as ChainBackend, LightHeader,
 		HeaderBackend as ChainHeaderBackend, ProvideCache, Cache,
 	},
 	call_executor::{CallExecutor, LocalCallExecutor},
@@ -1314,6 +1314,11 @@ impl<B, E, Block, RA> Client<B, E, Block, RA> where
 		self.backend.blockchain().header(*id)
 	}
 
+	/// Get block light header by id.
+	fn light_header(&self, id: &BlockId<Block>) -> error::Result<Option<LightHeader<Block>>> {
+		self.backend.blockchain().light_header(*id)
+	}
+
 	/// Get block body by id.
 	pub fn body(&self, id: &BlockId<Block>) -> error::Result<Option<Vec<<Block as BlockT>::Extrinsic>>> {
 		self.backend.blockchain().body(*id)
@@ -1408,6 +1413,10 @@ impl<B, E, Block, RA> ChainHeaderBackend<Block> for Client<B, E, Block, RA> wher
 {
 	fn header(&self, id: BlockId<Block>) -> error::Result<Option<Block::Header>> {
 		self.backend.blockchain().header(id)
+	}
+
+	fn light_header(&self, id: BlockId<Block>) -> error::Result<Option<LightHeader<Block>>> {
+		self.backend.blockchain().light_header(id)
 	}
 
 	fn info(&self) -> blockchain::Info<Block> {
