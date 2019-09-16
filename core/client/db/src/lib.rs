@@ -66,7 +66,7 @@ use client::children;
 use state_db::StateDb;
 use consensus_common::well_known_cache_keys;
 use crate::storage_cache::{CachingState, SharedCache, new_shared_cache};
-use log::{trace, debug, warn};
+use log::{trace, debug, warn, info};
 pub use state_db::PruningMode;
 
 #[cfg(feature = "test-helpers")]
@@ -246,8 +246,9 @@ impl<'a> state_db::MetaDb for StateMetaDb<'a> {
 }
 
 struct HeaderCache<Block: BlockT> {
-	number_to_hash: HashMap<NumberFor<Block>, Block::Hash>,
-	hash_to_data: LruCache<Block::Hash, LightHeader<Block>>,
+	pub number_to_hash: HashMap<NumberFor<Block>, Block::Hash>,
+	pub hash_to_data: LruCache<Block::Hash, LightHeader<Block>>,
+	pub light_misses: u128,
 }
 
 impl<Block: BlockT> HeaderCache<Block> {
@@ -255,6 +256,7 @@ impl<Block: BlockT> HeaderCache<Block> {
 		HeaderCache {
 			number_to_hash: HashMap::new(),
 			hash_to_data: LruCache::new(capacity),
+			light_misses: 0,
 		}
 	}
 
@@ -333,6 +335,14 @@ impl<Block: BlockT> client::blockchain::HeaderBackend<Block> for BlockchainDb<Bl
 		} else {
 			self.header(id).and_then(|maybe_header| match maybe_header {
 				Some(header) => {
+					header_cache.light_misses += 1;
+					if header_cache.light_misses % 1000 == 0 {
+						info!("@@@@@ MISSES {}, DATA_LEN {}, NUMBER_LEN {}", 
+							header_cache.light_misses,
+							header_cache.hash_to_data.len(),
+							header_cache.number_to_hash.len(),
+						);
+					}
 					let light_header = LightHeader {
 						hash: header.hash(),
 						number: *header.number(),
