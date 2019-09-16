@@ -217,7 +217,7 @@ pub fn tree_route<Block: BlockT, Backend: HeaderBackend<Block>>(
 ) -> Result<TreeRoute<Block>> {
 	use sr_primitives::traits::Header;
 
-	let load_header = |id: BlockId<Block>| {
+	let load_light_header = |id: BlockId<Block>| {
 		match backend.light_header(id) {
 			Ok(Some(hdr)) => Ok(hdr),
 			Ok(None) => Err(Error::UnknownBlock(format!("Unknown block {:?}", id))),
