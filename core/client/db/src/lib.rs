@@ -249,6 +249,8 @@ struct HeaderCache<Block: BlockT> {
 	pub number_to_hash: HashMap<NumberFor<Block>, Block::Hash>,
 	pub hash_to_data: LruCache<Block::Hash, LightHeader<Block>>,
 	pub light_misses: u128,
+	pub light_succ: u128,
+	pub header_hits: u128,
 }
 
 impl<Block: BlockT> HeaderCache<Block> {
@@ -257,6 +259,8 @@ impl<Block: BlockT> HeaderCache<Block> {
 			number_to_hash: HashMap::new(),
 			hash_to_data: LruCache::new(capacity),
 			light_misses: 0,
+			light_succ: 0,
+			header_hits: 0,
 		}
 	}
 
@@ -325,22 +329,27 @@ impl<Block: BlockT> BlockchainDb<Block> {
 
 impl<Block: BlockT> client::blockchain::HeaderBackend<Block> for BlockchainDb<Block> {
 	fn header(&self, id: BlockId<Block>) -> Result<Option<Block::Header>, client::error::Error> {
+		let mut header_cache = self.header_cache.write();
+		header_cache.header_hits += 1;
 		utils::read_header(&*self.db, columns::KEY_LOOKUP, columns::HEADER, id)
 	}
 
 	fn light_header(&self, id: BlockId<Block>) -> Result<Option<LightHeader<Block>>, client::error::Error> {
 		let mut header_cache = self.header_cache.write();
 		if let Some(header_data) = header_cache.get_data(id) {
+			header_cache.light_succ += 1;
 			Ok(Some(header_data))
 		} else {
 			self.header(id).and_then(|maybe_header| match maybe_header {
 				Some(header) => {
 					header_cache.light_misses += 1;
 					if header_cache.light_misses % 1000 == 0 {
-						info!("@@@@@ MISSES {}, DATA_LEN {}, NUMBER_LEN {}", 
+						info!("@@@@@ MISSES {}, FOUND {}, DATA_LEN {}, NUMBER_LEN {}, HEADER {}", 
 							header_cache.light_misses,
+							header_cache.light_succ,
 							header_cache.hash_to_data.len(),
 							header_cache.number_to_hash.len(),
+							header_cache.header_hits,
 						);
 					}
 					let light_header = LightHeader {
