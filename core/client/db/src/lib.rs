@@ -250,7 +250,6 @@ struct HeaderCache<Block: BlockT> {
 	pub hash_to_data: LruCache<Block::Hash, LightHeader<Block>>,
 	pub light_misses: u128,
 	pub light_succ: u128,
-	pub header_hits: u128,
 }
 
 impl<Block: BlockT> HeaderCache<Block> {
@@ -260,7 +259,6 @@ impl<Block: BlockT> HeaderCache<Block> {
 			hash_to_data: LruCache::new(capacity),
 			light_misses: 0,
 			light_succ: 0,
-			header_hits: 0,
 		}
 	}
 
@@ -288,6 +286,7 @@ pub struct BlockchainDb<Block: BlockT> {
 	meta: Arc<RwLock<Meta<NumberFor<Block>, Block::Hash>>>,
 	leaves: RwLock<LeafSet<Block::Hash, NumberFor<Block>>>,
 	header_cache: RwLock<HeaderCache<Block>>,
+	read_header_cnt: RwLock<u128>,
 }
 
 impl<Block: BlockT> BlockchainDb<Block> {
@@ -299,6 +298,7 @@ impl<Block: BlockT> BlockchainDb<Block> {
 			leaves: RwLock::new(leaves),
 			meta: Arc::new(RwLock::new(meta)),
 			header_cache: RwLock::new(HeaderCache::new(500000)),
+			read_header_cnt: RwLock::new(0),
 		})
 	}
 
@@ -329,8 +329,10 @@ impl<Block: BlockT> BlockchainDb<Block> {
 
 impl<Block: BlockT> client::blockchain::HeaderBackend<Block> for BlockchainDb<Block> {
 	fn header(&self, id: BlockId<Block>) -> Result<Option<Block::Header>, client::error::Error> {
-		let mut header_cache = self.header_cache.write();
-		header_cache.header_hits += 1;
+		{
+			let mut cnt = self.read_header_cnt.write();
+			*cnt = *cnt + 1;
+		}
 		utils::read_header(&*self.db, columns::KEY_LOOKUP, columns::HEADER, id)
 	}
 
@@ -349,7 +351,7 @@ impl<Block: BlockT> client::blockchain::HeaderBackend<Block> for BlockchainDb<Bl
 							header_cache.light_succ,
 							header_cache.hash_to_data.len(),
 							header_cache.number_to_hash.len(),
-							header_cache.header_hits,
+							self.read_header_cnt.read(),
 						);
 					}
 					let light_header = LightHeader {
