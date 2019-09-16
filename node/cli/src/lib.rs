@@ -18,6 +18,7 @@
 
 #![warn(missing_docs)]
 #![warn(unused_extern_crates)]
+#![type_length_limit="1279947"]
 
 pub use cli::error;
 pub mod chain_spec;

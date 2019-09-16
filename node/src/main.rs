@@ -17,6 +17,7 @@
 //! Substrate Node CLI
 
 #![warn(missing_docs)]
+#![type_length_limit="1279947"]
 
 use cli::VersionInfo;
 use futures::sync::oneshot;
