@@ -287,6 +287,7 @@ pub struct BlockchainDb<Block: BlockT> {
 	leaves: RwLock<LeafSet<Block::Hash, NumberFor<Block>>>,
 	header_cache: RwLock<HeaderCache<Block>>,
 	read_header_cnt: RwLock<u128>,
+	cached_headers: RwLock<HashMap<Block::Hash, Block::Header>>,
 }
 
 impl<Block: BlockT> BlockchainDb<Block> {
@@ -299,6 +300,7 @@ impl<Block: BlockT> BlockchainDb<Block> {
 			meta: Arc::new(RwLock::new(meta)),
 			header_cache: RwLock::new(HeaderCache::new(500000)),
 			read_header_cnt: RwLock::new(0),
+			cached_headers: RwLock::new(HashMap::new()),
 		})
 	}
 
@@ -329,11 +331,29 @@ impl<Block: BlockT> BlockchainDb<Block> {
 
 impl<Block: BlockT> client::blockchain::HeaderBackend<Block> for BlockchainDb<Block> {
 	fn header(&self, id: BlockId<Block>) -> Result<Option<Block::Header>, client::error::Error> {
+		match id {
+			BlockId::Hash(hash) => {
+				if let Some(header) = self.cached_headers.read().get(&hash) {
+					return Ok(Some(header.clone()))
+				}
+			},
+			BlockId::Number(_) => {
+			},
+		}
 		{
 			let mut cnt = self.read_header_cnt.write();
 			*cnt = *cnt + 1;
 		}
-		utils::read_header(&*self.db, columns::KEY_LOOKUP, columns::HEADER, id)
+		utils::read_header(&*self.db, columns::KEY_LOOKUP, columns::HEADER, id).and_then(|maybe_header| 
+		match maybe_header {
+			Some(header) => {
+				self.cached_headers.write().insert(header.hash().clone(), header.clone());
+				Ok(Some(header))
+			},
+			None => {
+				Ok(None)
+			}
+		})
 	}
 
 	fn light_header(&self, id: BlockId<Block>) -> Result<Option<LightHeader<Block>>, client::error::Error> {
