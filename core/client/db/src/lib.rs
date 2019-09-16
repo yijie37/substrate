@@ -292,7 +292,7 @@ impl<Block: BlockT> BlockchainDb<Block> {
 			db,
 			leaves: RwLock::new(leaves),
 			meta: Arc::new(RwLock::new(meta)),
-			header_cache: RwLock::new(HeaderCache::new(5000)),
+			header_cache: RwLock::new(HeaderCache::new(500000)),
 		})
 	}
 
