@@ -1158,10 +1158,10 @@ impl<Block: BlockT<Hash=H256>> Backend<Block> {
 			
 			// transaction.put(columns::HEADER, &lookup_key, &pending_block.header.encode());
 			if let Some(body) = pending_block.body {
-				transaction.put(columns::BODY, &lookup_key, &body.encode());
+				// transaction.put(columns::BODY, &lookup_key, &body.encode());
 			}
 			if let Some(justification) = pending_block.justification {
-				transaction.put(columns::JUSTIFICATION, &lookup_key, &justification.encode());
+				// transaction.put(columns::JUSTIFICATION, &lookup_key, &justification.encode());
 			}
 
 			if number.is_zero() {
