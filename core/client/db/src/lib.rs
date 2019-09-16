@@ -287,7 +287,8 @@ pub struct BlockchainDb<Block: BlockT> {
 	leaves: RwLock<LeafSet<Block::Hash, NumberFor<Block>>>,
 	header_cache: RwLock<HeaderCache<Block>>,
 	read_header_cnt: RwLock<u128>,
-	cached_headers: RwLock<HashMap<Block::Hash, Block::Header>>,
+	cached_headers_hash: RwLock<HashMap<Block::Hash, Block::Header>>,
+	cached_headers_number: RwLock<HashMap<NumberFor<Block>, Block::Header>>,
 }
 
 impl<Block: BlockT> BlockchainDb<Block> {
@@ -300,7 +301,8 @@ impl<Block: BlockT> BlockchainDb<Block> {
 			meta: Arc::new(RwLock::new(meta)),
 			header_cache: RwLock::new(HeaderCache::new(500000)),
 			read_header_cnt: RwLock::new(0),
-			cached_headers: RwLock::new(HashMap::new()),
+			cached_headers_hash: RwLock::new(HashMap::new()),
+			cached_headers_number: RwLock::new(HashMap::new()),
 		})
 	}
 
@@ -333,11 +335,14 @@ impl<Block: BlockT> client::blockchain::HeaderBackend<Block> for BlockchainDb<Bl
 	fn header(&self, id: BlockId<Block>) -> Result<Option<Block::Header>, client::error::Error> {
 		match id {
 			BlockId::Hash(hash) => {
-				if let Some(header) = self.cached_headers.read().get(&hash) {
+				if let Some(header) = self.cached_headers_hash.read().get(&hash) {
 					return Ok(Some(header.clone()))
 				}
 			},
-			BlockId::Number(_) => {
+			BlockId::Number(number) => {
+				if let Some(header) = self.cached_headers_number.read().get(&number) {
+					return Ok(Some(header.clone()))
+				}
 			},
 		}
 		{
@@ -347,7 +352,8 @@ impl<Block: BlockT> client::blockchain::HeaderBackend<Block> for BlockchainDb<Bl
 		utils::read_header(&*self.db, columns::KEY_LOOKUP, columns::HEADER, id).and_then(|maybe_header| 
 		match maybe_header {
 			Some(header) => {
-				self.cached_headers.write().insert(header.hash().clone(), header.clone());
+				self.cached_headers_hash.write().insert(header.hash().clone(), header.clone());
+				self.cached_headers_number.write().insert(header.number().clone(), header.clone());
 				Ok(Some(header))
 			},
 			None => {
@@ -1147,8 +1153,10 @@ impl<Block: BlockT<Hash=H256>> Backend<Block> {
 				number,
 				hash,
 			)?;
-
-			transaction.put(columns::HEADER, &lookup_key, &pending_block.header.encode());
+			self.blockchain.cached_headers_hash.write().insert(hash, pending_block.header.clone());
+			self.blockchain.cached_headers_number.write().insert(number, pending_block.header.clone());
+			
+			// transaction.put(columns::HEADER, &lookup_key, &pending_block.header.encode());
 			if let Some(body) = pending_block.body {
 				transaction.put(columns::BODY, &lookup_key, &body.encode());
 			}
